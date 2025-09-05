@@ -1,0 +1,27 @@
+app:
+  title: BullishMinds Markets — Investor Education
+  subtitle: Live/delayed prices, explainable factors, and learning-first insights
+
+factors:
+  value:
+    fcf_yield_good: 0.06
+    fcf_yield_bad: -0.02
+    pe_good: 10
+    pe_bad: 40
+  quality:
+    roe_good: 0.20
+    roe_bad: 0.00
+    gross_margin_good: 0.50
+    gross_margin_bad: 0.10
+  momentum:
+    ma_short: 50
+    ma_long: 200
+  risk:
+    leverage_low: 0.10
+    leverage_high: 0.60
+    vol_low: 0.01
+    vol_high: 0.06
+
+runtime:
+  price_period: "2y"
+  price_interval: "1d"
