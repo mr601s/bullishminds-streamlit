@@ -210,4 +210,368 @@ def main():
                             with col_info2:
                                 st.metric("Sector", sector or "—")
                             with col_info3:
-                                st.metric
+                                st.metric("Industry", industry or "—")
+                            with col_info4:
+                                st.metric("Data Confidence", conf)
+
+                            # Price chart
+                            if snap["prices"]:
+                                st.subheader("📈 Price & Moving Averages")
+                                price_fig = plot_prices(snap["prices"], M_CFG["momentum"]["ma_short"], M_CFG["momentum"]["ma_long"])
+                                st.plotly_chart(price_fig, use_container_width=True)
+
+                            # Score gauges
+                            st.subheader("🎯 Investment Scores")
+                            gauge_col1, gauge_col2, gauge_col3, gauge_col4, gauge_col5 = st.columns(5)
+                            
+                            with gauge_col1:
+                                comp_fig = create_gauge(comp, "Composite")
+                                st.plotly_chart(comp_fig, use_container_width=True)
+                            with gauge_col2:
+                                v_fig = create_gauge(v_score or 0, "Value")
+                                st.plotly_chart(v_fig, use_container_width=True)
+                            with gauge_col3:
+                                q_fig = create_gauge(q_score or 0, "Quality")
+                                st.plotly_chart(q_fig, use_container_width=True)
+                            with gauge_col4:
+                                m_fig = create_gauge(m_score or 0, "Momentum")
+                                st.plotly_chart(m_fig, use_container_width=True)
+                            with gauge_col5:
+                                r_fig = create_gauge(r_score or 0, "Risk")
+                                st.plotly_chart(r_fig, use_container_width=True)
+
+                            # Financial metrics table
+                            st.subheader("📋 Key Metrics")
+                            
+                            col_table1, col_table2 = st.columns(2)
+                            
+                            with col_table1:
+                                st.markdown("**Valuation & Profitability**")
+                                metrics_df1 = pd.DataFrame([
+                                    ["P/E (TTM)", f"{snap['derived']['pe']:.1f}" if snap['derived']['pe'] else "—"],
+                                    ["FCF Yield (TTM)", fmt_pct(snap['derived']['fcf_yield'])],
+                                    ["ROE (TTM)", fmt_pct(snap['derived']['roe'])],
+                                    ["Gross Margin", fmt_pct(snap['derived']['gross_margin'])],
+                                    ["Operating Margin", fmt_pct(snap['derived']['operating_margin'])],
+                                    ["Net Margin", fmt_pct(snap['derived']['net_margin'])],
+                                ], columns=["Metric", "Value"])
+                                st.dataframe(metrics_df1, use_container_width=True, hide_index=True)
+                            
+                            with col_table2:
+                                st.markdown("**Risk & Returns**")
+                                metrics_df2 = pd.DataFrame([
+                                    ["Dividend Yield (TTM)", fmt_pct(snap['derived']['dividend_yield'])],
+                                    ["Payout Ratio (TTM)", fmt_pct(snap['derived']['payout_ratio'])],
+                                    ["Debt/Assets", fmt_pct(snap['derived']['leverage'])],
+                                    ["Volatility 90d (σ)", fmt_pct(snap['price_features']['vol_90d'])],
+                                    ["Max Drawdown 1y", fmt_pct(snap['price_features']['max_drawdown_1y'])],
+                                    ["Beta 1y vs SPY", f"{snap['price_features']['beta_1y']:.2f}" if snap['price_features']['beta_1y'] is not None else "—"],
+                                ], columns=["Metric", "Value"])
+                                st.dataframe(metrics_df2, use_container_width=True, hide_index=True)
+
+                            # Explanations
+                            st.subheader("💡 Score Explanations")
+                            why_text = []
+                            for title, meta in zip(["Value","Quality","Momentum","Risk"], metas):
+                                if meta and meta.get("details"):
+                                    why_text.append(f"**{title}:**")
+                                    for detail in meta["details"]:
+                                        why_text.append(f"- {detail}")
+                                    why_text.append("")
+                            
+                            if why_text:
+                                st.markdown("\n".join(why_text))
+                            else:
+                                st.info("Insufficient data to generate detailed explanations.")
+
+                            # Live intraday data
+                            st.subheader("📊 Live Intraday (1min delayed)")
+                            try:
+                                df, meta = fetch_intraday(ticker, lookback_minutes=180, interval="1m")
+                                if df is not None and meta is not None:
+                                    fig = go.Figure()
+                                    fig.add_trace(go.Scatter(x=df["Date"], y=df["Close"], name="1m Close"))
+                                    fig.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10))
+                                    st.plotly_chart(fig, use_container_width=True)
+                                    
+                                    chg = f"{meta['change']*100:.2f}%" if meta.get("change") is not None else "—"
+                                    st.info(f"**Live Data** — {ticker}: {fmt_price(meta['last'])} • Session Change: {chg}")
+                                else:
+                                    st.warning("Live data not available")
+                            except Exception as e:
+                                st.warning(f"Live data error: {e}")
+
+                            save_snapshot(ticker, snap)
+
+                        except Exception as e:
+                            st.error(f"Error analyzing {ticker}: {str(e)}")
+                else:
+                    st.warning("Please enter a ticker symbol")
+
+    # TAB 2: Compare
+    with tab2:
+        st.header("⚖️ Compare Stocks")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            t1 = st.text_input("Ticker 1", value="AAPL", key="comp1").upper()
+        with col2:
+            t2 = st.text_input("Ticker 2", value="MSFT", key="comp2").upper()
+        with col3:
+            t3 = st.text_input("Ticker 3 (optional)", value="", key="comp3").upper()
+            
+        if st.button("🔍 Compare Stocks", type="primary"):
+            tickers = [t for t in [t1, t2, t3] if t and t.strip()]
+            if tickers:
+                with st.spinner("Comparing stocks..."):
+                    try:
+                        rows = []
+                        for tk in tickers:
+                            snap = get_snapshot(
+                                ticker=tk,
+                                prices_period=RUNTIME["price_period"],
+                                prices_interval=RUNTIME["price_interval"],
+                                ma_s=M_CFG["momentum"]["ma_short"],
+                                ma_l=M_CFG["momentum"]["ma_long"]
+                            )
+                            comp, (v, q, m, r), _ = score_from_snapshot(snap, weights)
+                            name = snap["info"].get("company") or tk
+                            sector = snap.get("profile", {}).get("sector")
+                            rows.append({
+                                "Ticker": tk,
+                                "Company": name,
+                                "Sector": sector or "",
+                                "Close": fmt_price(snap["last_close"]),
+                                "Composite": f"{comp:.1f}" if comp else "—",
+                                "Value": f"{v:.1f}" if v else "—",
+                                "Quality": f"{q:.1f}" if q else "—",
+                                "Momentum": f"{m:.1f}" if m else "—",
+                                "Risk": f"{r:.1f}" if r else "—"
+                            })
+                        
+                        df = pd.DataFrame(rows)
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        
+                        # Highlight winner
+                        numeric_df = df.copy()
+                        numeric_df["Composite_num"] = pd.to_numeric(df["Composite"].str.replace("—", "0"), errors="coerce")
+                        winner = numeric_df.loc[numeric_df["Composite_num"].idxmax(), "Ticker"]
+                        st.success(f"🏆 **Top Pick:** {winner}")
+                        
+                    except Exception as e:
+                        st.error(f"Error comparing stocks: {e}")
+            else:
+                st.warning("Please enter at least one ticker")
+
+    # TAB 3: Watchlist
+    with tab3:
+        st.header("📊 Watchlist Scoring")
+        
+        wl_text = st.text_area(
+            "Enter tickers (comma, semicolon, or newline separated, max 20):",
+            value="AAPL, MSFT, GOOGL, AMZN, TSLA",
+            height=100,
+            help="Example: AAPL, MSFT; GOOGL\nAMZN, TSLA"
+        )
+        
+        if st.button("📈 Score Watchlist", type="primary"):
+            tickers = parse_ticker_list(wl_text)[:20]  # Max 20
+            if tickers:
+                with st.spinner(f"Scoring {len(tickers)} stocks..."):
+                    progress_bar = st.progress(0)
+                    rows = []
+                    
+                    for i, tk in enumerate(tickers):
+                        try:
+                            snap = get_snapshot(
+                                ticker=tk,
+                                prices_period=RUNTIME["price_period"],
+                                prices_interval=RUNTIME["price_interval"],
+                                ma_s=M_CFG["momentum"]["ma_short"],
+                                ma_l=M_CFG["momentum"]["ma_long"]
+                            )
+                            comp, (v, q, m, r), _ = score_from_snapshot(snap, weights)
+                            name = snap["info"].get("company") or tk
+                            sector = snap.get("profile", {}).get("sector")
+                            rows.append({
+                                "Ticker": tk,
+                                "Company": name,
+                                "Sector": sector or "",
+                                "Close": snap["last_close"],
+                                "Composite": comp or 0,
+                                "Value": v or 0,
+                                "Quality": q or 0,
+                                "Momentum": m or 0,
+                                "Risk": r or 0
+                            })
+                            progress_bar.progress((i + 1) / len(tickers))
+                        except Exception as e:
+                            st.warning(f"Could not process {tk}: {e}")
+                    
+                    if rows:
+                        df = pd.DataFrame(rows).sort_values("Composite", ascending=False)
+                        
+                        # Format for display
+                        display_df = df.copy()
+                        display_df["Close"] = display_df["Close"].apply(fmt_price)
+                        display_df["Composite"] = display_df["Composite"].apply(lambda x: f"{x:.1f}")
+                        display_df["Value"] = display_df["Value"].apply(lambda x: f"{x:.1f}")
+                        display_df["Quality"] = display_df["Quality"].apply(lambda x: f"{x:.1f}")
+                        display_df["Momentum"] = display_df["Momentum"].apply(lambda x: f"{x:.1f}")
+                        display_df["Risk"] = display_df["Risk"].apply(lambda x: f"{x:.1f}")
+                        
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                        
+                        # Download link
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download CSV",
+                            data=csv,
+                            file_name=f"watchlist_scores_{int(time.time())}.csv",
+                            mime="text/csv"
+                        )
+                        
+                        st.success(f"🎯 **Top Pick:** {df.iloc[0]['Ticker']} (Score: {df.iloc[0]['Composite']:.1f})")
+            else:
+                st.warning("Please enter some tickers")
+
+    # TAB 4: Universe Screen
+    with tab4:
+        st.header("🌍 Universe Screening")
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            universe = st.radio("Select Universe:", ["S&P 500", "Custom list"])
+            top_n = st.slider("Show top N results:", 5, 100, 25, 5)
+        
+        with col2:
+            if universe == "Custom list":
+                custom_list = st.text_area("Custom tickers:", height=100)
+            else:
+                custom_list = ""
+        
+        if st.button("🔎 Screen Universe", type="primary"):
+            with st.spinner("Screening universe..."):
+                try:
+                    if universe == "S&P 500":
+                        tickers = fetch_sp500_tickers()
+                    else:
+                        tickers = parse_ticker_list(custom_list)
+                    
+                    tickers = tickers[:500]  # Limit to prevent timeouts
+                    
+                    if not tickers:
+                        st.warning("No tickers to screen")
+                    else:
+                        progress_bar = st.progress(0)
+                        rows = []
+                        
+                        for i, tk in enumerate(tickers):
+                            try:
+                                snap = get_snapshot(
+                                    ticker=tk,
+                                    prices_period=RUNTIME["price_period"],
+                                    prices_interval=RUNTIME["price_interval"],
+                                    ma_s=M_CFG["momentum"]["ma_short"],
+                                    ma_l=M_CFG["momentum"]["ma_long"]
+                                )
+                                comp, (v, q, m, r), _ = score_from_snapshot(snap, weights)
+                                if comp is not None:  # Only include stocks with valid scores
+                                    rows.append({
+                                        "Ticker": tk,
+                                        "Composite": comp,
+                                        "Value": v or 0,
+                                        "Quality": q or 0,
+                                        "Momentum": m or 0,
+                                        "Risk": r or 0
+                                    })
+                                progress_bar.progress((i + 1) / len(tickers))
+                            except:
+                                continue  # Skip problematic tickers
+                        
+                        if rows:
+                            df = pd.DataFrame(rows)
+                            
+                            # Add percentiles
+                            for col in ["Composite", "Value", "Quality", "Momentum", "Risk"]:
+                                df[f"{col}_pct"] = (df[col].rank(pct=True) * 100).round(1)
+                            
+                            # Sort and limit
+                            df_sorted = df.sort_values("Composite", ascending=False).head(top_n)
+                            
+                            # Display
+                            display_cols = ["Ticker", "Composite", "Composite_pct", "Value", "Quality", "Momentum", "Risk"]
+                            display_df = df_sorted[display_cols].copy()
+                            display_df.columns = ["Ticker", "Score", "Percentile", "Value", "Quality", "Momentum", "Risk"]
+                            
+                            st.dataframe(display_df, use_container_width=True, hide_index=True)
+                            
+                            # Download
+                            csv = df_sorted.to_csv(index=False)
+                            st.download_button(
+                                label="📥 Download Results",
+                                data=csv,
+                                file_name=f"universe_screen_{int(time.time())}.csv",
+                                mime="text/csv"
+                            )
+                            
+                            st.info(f"📊 Screened {len(df)} stocks from {universe}, showing top {len(df_sorted)}")
+                        else:
+                            st.warning("No valid results found")
+                            
+                except Exception as e:
+                    st.error(f"Screening error: {e}")
+
+    # TAB 5: Learn
+    with tab5:
+        st.header("📚 Learning Center")
+        
+        try:
+            with open("tooltips.md", "r", encoding="utf-8") as f:
+                st.markdown(f.read())
+        except FileNotFoundError:
+            try:
+                with open("content/tooltips.md", "r", encoding="utf-8") as f:
+                    st.markdown(f.read())
+            except FileNotFoundError:
+                st.markdown("""
+                # Investment Factor Analysis
+
+                ## Value Factors
+                - **P/E Ratio**: Price-to-Earnings ratio compares stock price to earnings per share
+                - **FCF Yield**: Free Cash Flow Yield measures cash generation relative to market cap
+
+                ## Quality Factors  
+                - **ROE**: Return on Equity measures how efficiently a company uses shareholder equity
+                - **Gross Margin**: Gross profit as percentage of revenue
+
+                ## Momentum Factors
+                - **Price Returns**: Historical stock performance over different time periods
+                - **Moving Averages**: Trend indicators showing price direction
+
+                ## Risk Factors
+                - **Volatility**: Standard deviation of returns measuring price fluctuation
+                - **Beta**: Correlation with market (SPY) movements
+                - **Max Drawdown**: Largest peak-to-trough decline
+                - **Leverage**: Debt-to-assets ratio
+
+                ## Data Sources
+                - SEC EDGAR: Official company financials via XBRL
+                - Yahoo Finance: Stock prices and market data (delayed)
+                - Real-time: Polygon.io and Finnhub (API keys required)
+
+                *Educational purposes only. Not investment advice.*
+                """)
+
+    # Footer
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.caption("⚡ Built with Streamlit")
+    with col2:
+        provider_diagnostic()
+    with col3:
+        st.caption(DISCLAIMER)
+
+if __name__ == "__main__":
+    main()
