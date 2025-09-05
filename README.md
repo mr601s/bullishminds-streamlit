@@ -1,42 +1,30 @@
 ---
 title: BullishMinds Markets — Investor Education
-emoji: 📈
+emoji: ⚡
 colorFrom: indigo
 colorTo: yellow
-sdk: gradio
-sdk_version: 5.44.1
-app_file: app.py
+sdk: streamlit
+sdk_version: 1.28.0
+app_file: streamlit_app.py
 pinned: true
 ---
 
-# BullishMinds Markets (Standalone)
+# BullishMinds Markets (Streamlit)
 
-An education-first stock evaluator with **live/delayed intraday**, **explainable factor scores**, comparisons, watchlists, and a simple **universe screen**.
+An education-first stock evaluator with **live/delayed intraday**, explainable factor scores, comparisons, watchlists, and a simple **universe screen**.
 
-> **Not investment advice.** Data may be delayed or incomplete. For learning purposes only.
+> Not investment advice. Data may be delayed or incomplete. For learning purposes only.
 
 ## Features
-- **Live intraday strip** (Yahoo 1m delayed; **optional** Polygon/Finnhub real-time)
-- **Single**: prices + gauges (Value, Quality, Momentum, Risk) with plain-English explanations
-- **Compare**: up to 3 tickers
-- **Watchlist**: score many at once + CSV export
-- **Universe**: S&P 500 or custom list; percentiles by factor; CSV export
-- **Learn**: glossary/tooltips for each concept
+- 🎯 **Single Stock Analysis** - Comprehensive scoring with live data
+- ⚖️ **Stock Comparison** - Compare up to 3 stocks side-by-side  
+- 📊 **Watchlist Scoring** - Score multiple stocks at once
+- 🌍 **Universe Screening** - Screen S&P 500 or custom lists
+- 📚 **Educational Content** - Learn about investment factors
 
-## Setup (Hugging Face)
-1. **Add Variables & Secrets** (Settings → Variables and secrets)
-   - **Variable**:  
-     `SEC_USER_AGENT = BullishMindsMarkets/1.0 (you@example.com)`
-   - **Secrets** *(optional for real-time)*:  
-     `POLYGON_API_KEY = <your polygon key>`  
-     `FINNHUB_API_KEY = <your finnhub key>`
-2. **Restart the Space**.
-3. Open the app → **Single** tab → choose **Live data source**:
-   - *Yahoo (1m, delayed)* → no keys required  
-   - *Polygon (real-time)* → requires `POLYGON_API_KEY`  
-   - *Finnhub (real-time)* → requires `FINNHUB_API_KEY`
+## Data Sources
+- **SEC EDGAR**: Official company financials via XBRL
+- **Yahoo Finance**: Stock prices and market data (delayed)
+- **Real-time**: Polygon.io and Finnhub (API keys required)
 
-## License
-- **Code**: Apache-2.0 (see `LICENSE`)
-- **Educational content in /content**: CC BY-NC 4.0
-- **Logos/brand**: All Rights Reserved
+Built with ⚡ Streamlit
