@@ -1,11 +1,27 @@
 # Copyright (c) 2025 Bullish Minds AI
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import os
 import streamlit as st
+
+# Universal secrets loader: st.secrets (Streamlit Cloud) → os.environ (all other code)
+try:
+    for k, v in st.secrets.items():
+        os.environ[k] = v
+except:
+    pass  # No secrets available (local dev without secrets)
+
+# Optional: also load .env file if running locally
+if os.path.exists('.env'):
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # python-dotenv not installed
+
 import pandas as pd
 import plotly.graph_objects as go
 import yaml
-import os
 import tempfile
 import time
 
