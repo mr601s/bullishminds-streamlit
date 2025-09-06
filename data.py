@@ -4,7 +4,6 @@ import time
 from typing import Dict, Any, Optional, Tuple, List
 import pandas as pd
 import numpy as np
-
 # Streamlit secrets for API keys/environment
 try:
     import streamlit as st
@@ -12,7 +11,6 @@ try:
         os.environ[k] = v
 except Exception:
     pass
-
 if os.path.exists('.env'):
     try:
         from dotenv import load_dotenv
@@ -96,7 +94,6 @@ def parse_facts(facts: dict) -> dict:
     return out
 
 # ------------ Price Fetching: Robust Close Handling -----------
-
 def _get_close_any(row):
     """Return close price from any common field."""
     for field in ["Close", "close", "c", "adjclose", "Adj Close", "AdjClose"]:
@@ -162,7 +159,6 @@ def fetch_intraday(ticker: str, lookback_minutes: int = 180, interval: str = "1m
         return None, None
 
 # ---------- Profile/Universe ---------
-
 def fetch_profile(ticker: str) -> dict:
     # Wire up yfinance or Finnhub as needed for richer company info.
     return {}
@@ -243,5 +239,25 @@ def build_snapshot(ticker: str, prices_period: str, prices_interval: str, ma_s: 
     if last_close is None and prices is not None:
         print(f"[WARN] Could not determine last_close for {ticker}. Price columns: {prices.columns.tolist()}")
     return snapshot
+
+# ---------- ADD THESE STUBS FOR STREAMLIT APP COMPATIBILITY ----------
+def save_snapshot(ticker: str, snap: dict):
+    """
+    Minimal stub to allow imports from streamlit_app.py.
+    You can customize logic as needed, for now this just saves in cache.
+    """
+    fname = os.path.join(CACHE_DIR, f"snapshot_{ticker}.json")
+    try:
+        with open(fname, "w") as f:
+            json.dump(snap, f)
+    except Exception as e:
+        print(f"Failed to save snapshot for {ticker}: {e}")
+
+def fetch_sp500_tickers() -> list:
+    """
+    Minimal stub. Replace with logic to fetch/return S&P500 ticker list as desired.
+    """
+    # Example hardcoded tickers; replace/expand as needed
+    return ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
 
 # If you need more helpers from your original file (for tickers list parsing etc.), copy them above here.
