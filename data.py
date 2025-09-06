@@ -1,7 +1,25 @@
 # Copyright (c) 2025 Bullish Minds AI
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-import os, json, time
+import os
+
+# Universal secrets loader for Streamlit Cloud compatibility
+try:
+    import streamlit as st
+    for k, v in st.secrets.items():
+        os.environ[k] = v
+except:
+    pass  # No streamlit or secrets available
+
+# Optional: also load .env file if running locally
+if os.path.exists('.env'):
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # python-dotenv not installed
+
+import json, time
 from io import StringIO
 from typing import Dict, Any, Optional, Tuple, List
 
